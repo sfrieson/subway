@@ -2,6 +2,8 @@ COPY agency FROM '/Users/sfrieson/code/subway-time-map/data/GTFS-Schedule-Data_N
 COPY calendar FROM '/Users/sfrieson/code/subway-time-map/data/GTFS-Schedule-Data_NYCT-Subway/calendar.txt' DELIMITER ',' CSV HEADER;
 COPY calendar_dates FROM '/Users/sfrieson/code/subway-time-map/data/GTFS-Schedule-Data_NYCT-Subway/calendar_dates.txt' DELIMITER ',' CSV HEADER;
 COPY routes FROM '/Users/sfrieson/code/subway-time-map/data/GTFS-Schedule-Data_NYCT-Subway/routes.txt' DELIMITER ',' CSV HEADER;
+UPDATE routes SET route_text_color = DEFAULT WHERE route_text_color IS NULL;
+UPDATE routes SET route_text_color = DEFAULT WHERE route_text_color = ' ';
 COPY shapes FROM '/Users/sfrieson/code/subway-time-map/data/GTFS-Schedule-Data_NYCT-Subway/shapes.txt' DELIMITER ',' CSV HEADER;
 COPY stops FROM '/Users/sfrieson/code/subway-time-map/data/GTFS-Schedule-Data_NYCT-Subway/stops.txt' DELIMITER ',' CSV HEADER;
 COPY transfers FROM '/Users/sfrieson/code/subway-time-map/data/GTFS-Schedule-Data_NYCT-Subway/transfers.txt' DELIMITER ',' CSV HEADER;
