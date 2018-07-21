@@ -39,8 +39,9 @@ CREATE TABLE routes (
   route_text_color VARCHAR(32) -- UNSURE
 );
 
+-- shape_id + shape_pt_sequence creates unique key
 CREATE TABLE shapes (
-  shape_id CHAR(8) PRIMARY KEY,
+  shape_id CHAR(10),
   shape_pt_lat FLOAT,
   shape_pt_lon FLOAT,
   shape_pt_sequence SMALLINT,
@@ -74,13 +75,13 @@ CREATE TABLE trips (
   trip_headsign VARCHAR(64), -- ESTIMATE
   direction_id SMALLINT,
   block_id VARCHAR(8), -- UNSURE
-  shape_id CHAR(8) REFERENCES shapes (shape_id)
+  shape_id CHAR(10)
 );
 
 CREATE TABLE stop_times (
   trip_id VARCHAR(64) REFERENCES trips (trip_id),
-  arrival_time TIME,
-  departure_time TIME,
+  arrival_time CHAR(8), -- Elapsed time, may go above 24:00:00
+  departure_time CHAR(8), -- Elapsed time, may go above 24:00:00
   stop_id VARCHAR(8) REFERENCES stops (stop_id), -- ESTIMATE
   stop_sequence SMALLINT,
   stop_headsign VARCHAR(32), -- UNSURE
