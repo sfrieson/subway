@@ -39,7 +39,7 @@
 -- https://hashrocket.com/blog/posts/faster-json-generation-with-postgresql
 COPY (
   SELECT array_to_json(array_agg(row_to_json(rows))) FROM (
-    SELECT stop_times.trip_id, route_id, stop_sequence, stop_id, arrival_time, departure_time
+    SELECT stop_times.trip_id, route_id, stop_sequence, parent_station, arrival_time, departure_time
     FROM stop_times
       JOIN trips on stop_times.trip_id = trips.trip_id
     WHERE stop_times.trip_id IN (

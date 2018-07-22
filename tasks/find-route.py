@@ -4,6 +4,8 @@ import psycopg2
 from pprint import pprint
 import re
 
+limit = 0
+
 connection = psycopg2.connect("dbname=subway_schedule")
 cursor = connection.cursor()
 
@@ -22,14 +24,15 @@ class Station:
     def __init__(self, data):
         self.id = data[2]
         self.name = data[4]
+        self.position = 'ball'
         self.uptown = None
         self.downtown = None
 
     def __repr__(self):
-        return '{"id": "%s", "name": "%s", "uptown": %s, "downtown": %s}' % (
+        return '{"id": "%s", "name": "%s", "uptown": %s, "downtown": %s, "position": %s}' % (
             self.id, self.name,
             '"%s"' % self.uptown.id if self.uptown else 'null', \
-            '"%s"' % self.downtown.id if self.downtown else 'null')
+            '"%s"' % self.downtown.id if self.downtown else 'null', self.position)
 
     def set_next(self, next, direction):
         if direction == 0:
@@ -45,10 +48,14 @@ class Station:
             elif self.downtown is not next:
                 print('not equal...')
 
+    def set_position(self, pos):
+        self.position = pos
+
     def toDict(self):
         return {
             'id': self.id,
             'name': self.name,
+            'position': self.position,
             'uptown': self.uptown.id if self.uptown else None,
             'downtown': self.downtown.id if self.downtown else None
         }
@@ -74,7 +81,7 @@ def get_route(route_id):
 
 def get_stations(route_id, day_of_week):
     cursor.execute("""
-        SELECT stop_times.trip_id, stop_sequence, stop_times.stop_id, direction_id, stop_name, arrival_time, departure_time
+        SELECT stop_times.trip_id, stop_sequence, stops.parent_station, direction_id, stop_name, arrival_time, departure_time
         FROM stop_times
           JOIN trips on stop_times.trip_id = trips.trip_id
           JOIN stops on stop_times.stop_id = stops.stop_id
@@ -90,11 +97,12 @@ def get_stations(route_id, day_of_week):
             %s IS TRUE
         )
         ORDER BY stop_times.trip_id, stop_sequence
-    """ % (route_id, day_of_week))
+        %s
+    """ % (route_id, day_of_week, 'LIMIT %s' % limit if limit > 0 else ''))
 
 
 
-    # (trip_id, stop_sequence, stop_id, direction_id, stop_name, arrival_time, departure_time)
+    # (trip_id, stop_sequence, parent_station, direction_id, stop_name, arrival_time, departure_time)
     trips = collect_on(cursor.fetchall(), 0) # 0 is trip_id
 
     stations = {}
@@ -123,15 +131,18 @@ def get_stations(route_id, day_of_week):
     # https://stackoverflow.com/questions/3097866/access-an-arbitrary-element-in-a-dictionary-in-python
     tmp_station = next(iter(stations.values()))
 
+    # get to the beginning
     while tmp_station.uptown:
         tmp_station = tmp_station.uptown
 
     uptown_start = tmp_station
 
+    tmp_station.set_position(len(stations_ordered))
     stations_ordered.append(tmp_station)
 
     while tmp_station.downtown:
         tmp_station = tmp_station.downtown
+        tmp_station.set_position(len(stations_ordered))
         stations_ordered.append(tmp_station)
 
     downtown_start = tmp_station
@@ -139,18 +150,18 @@ def get_stations(route_id, day_of_week):
     return (stations, stations_ordered, uptown_start, downtown_start, trips)
 
 
-def get_timetable(trips):
+def get_timetable(trips, stations):
     spans = []
     for trip_id, trip in trips.items():
         for i, details in enumerate(trip):
             if i < len(trip) - 1:
                 start = details
                 stop = trip[i + 1]
-                # (trip_id, stop_sequence, stop_id, direction_id, stop_name, arrival_time, departure_time)
+                # (trip_id, stop_sequence, parent_station, direction_id, stop_name, arrival_time, departure_time)
                 if start and stop:
                     spans.append({
-                        'from': start[2],
-                        'to': stop[2],
+                        'from': stations[start[2]].toDict(),
+                        'to': stations[stop[2]].toDict(),
                         'departure_time': make_relative_time(start[6]),
                         'arrival_time': make_relative_time(stop[5])
                     })
@@ -179,11 +190,13 @@ def make_route(route_id, day_type):
     (stations, stations_ordered, uptown_start, downtown_start, trips) = get_stations(route_id, day)
 
     route['stations'] = [x.toDict() for x in stations_ordered]
-    route['uptown_start'] = uptown_start.toDict()
-    route['downtown_start'] = downtown_start.toDict()
-    route['trips'] = trips
+    # route['uptown_start'] = uptown_start.toDict()
+    # route['downtown_start'] = downtown_start.toDict()
+    # route['trips'] = trips
 
-    route['timetable'] = get_timetable(trips)
+    timetable = get_timetable(trips, stations)
+    # route['timetable'] = timetable
+    route['timetablelines'] = [((x['from']['position'], x['departure_time']['value']), (x['to']['position'], x['arrival_time']['value'])) for x in timetable]
     return route
 
 route = make_route('W', 'weekday')
