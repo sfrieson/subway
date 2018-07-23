@@ -203,3 +203,18 @@ route = make_route('W', 'weekday')
 
 json.dump(route, open('./results/%s-times.json' % route["route_id"], 'w'), separators=(',',':'))
 print('File written: ./results/%s-times.json' % route["route_id"])
+
+
+def build_svg(lines, stations):
+    svg_lines = ''
+
+    for a, b in lines:
+        svg_lines += '<line y1="%s" x1="%s" y2="%s" x2="%s" />' % (a[0], a[1], b[0], b[1])
+
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 %s %s" stroke="black">%s</svg>' % (len(stations), 24 * 60 * 60, svg_lines)
+
+
+
+svg = open('./results/%s-times.svg' % route["route_id"], 'w')
+svg.write(build_svg(route['timetablelines'], route['stations']))
+print('File written: ./results/%s-times.svg' % route["route_id"])
