@@ -1,3 +1,5 @@
+from schedule.controllers.station import Time
+
 class SVG:
     def __init__(self, artboard_size, data_size):
         self.width, self.height = artboard_size
@@ -37,10 +39,12 @@ class SVG:
             ''.join([self.line(line, 'st0') for line in lines])
         ))
 
-    def group(self, data):
+    @staticmethod
+    def group(data):
         return '<g id="%s">%s</g>' % data
 
-    def line(self, line, classname=None):
+    @staticmethod
+    def line(line, classname=None):
         p1, p2 = line
         x1, y1 = p1
         x2, y2 = p2
@@ -81,22 +85,47 @@ class SVG:
                     '<style type="text/css">',
                     ''.join(['.%s { %s }' % style for style in self.styles]),
                     '</style>',
-                    self.grid(30 * 60, 1)
+                    self.grid(30 * Time.MINUTE, 1)
                 ] + self.contents
             )
         )
 
 
 def draw(route):
-    drawing = SVG((1720, 1080), (24 * 60 * 60, len(route.get_stations())))
-
-    trip_lines = []
+    trip_paths = []
+    drawing = SVG((1720, 1080), (Time.DAY, len(route.get_stations())))
     for trip in route.trips:
+        segment_paths = []
         for segment in trip.segments:
-            trip_lines.append(
-                ((segment.start.departure_time.value, segment.start.station.line_order),
-                (segment.end.arrival_time.value, segment.end.station.line_order))
+            start = segment.start
+            end = segment.end
+            starts_before_midnight = start.departure_time.value < Time.DAY
+            ends_after_midnight = end.arrival_time.value > Time.DAY
+
+            p1 = (
+                start.departure_time.value if starts_before_midnight else start.departure_time.get_time_of_day_value(),
+                start.station.line_order
             )
+            p2 = (
+                end.arrival_time.value if starts_before_midnight else end.arrival_time.get_time_of_day_value(),
+                end.station.line_order
+            )
+            
+            segment_paths.append((p1, p2))
+
+            # Some lines go off right side of the table, so duplicate them on the left side
+            if ends_after_midnight:
+                duplicate_p1 = (start.departure_time.value - Time.DAY, start.station.line_order)
+                duplicate_p2 = (end.arrival_time.value - Time.DAY, end.station.line_order)
+
+                segment_paths.append((duplicate_p1, duplicate_p2))
+
+        trip_paths.append(
+            SVG.group((
+                trip.id,
+                [drawing.normalized_line(line, 'st1') for line in segment_paths]
+            ))
+        )
 
     drawing.add_style('st1', """
         fill: none;
@@ -104,9 +133,9 @@ def draw(route):
         stroke-width: 2;
     """ % '#000000')
 
-    drawing.add(drawing.group((
+    drawing.add(SVG.group((
         'routes',
-        ''.join([drawing.normalized_line(line, 'st1') for line in trip_lines])
+        trip_paths
     )))
     return drawing.print()
 

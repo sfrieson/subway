@@ -4,23 +4,27 @@ from schedule import utils
 
 stations = {}
 
-class Trip_Time:
+class Time:
     time_parse = re.compile(r"(?P<hr>\d{2}):(?P<min>\d{2}):(?P<sec>\d{2})")
+    SECOND = 1
+    MINUTE = 60
+    HOUR = 60 * 60
+    DAY = 24 * 60 * 60
 
     def __init__(self, time_string):
         match = self.time_parse.match(time_string)
         self.sec = int(match.group('sec'))
         self.min = int(match.group('min'))
-        self.hr = int(match.group('hr')) % 24
+        self.hr = int(match.group('hr'))
 
         self.relative = time_string
-        self.value = self.sec + self.min * 60 + self.hr * 60 * 60
+        self.value = self.sec * self.SECOND + self.min * self.MINUTE + self.hr * self.HOUR
 
     def get_time_of_day(self):
-        return '%s:%s' % (self.hr, str(self.min).zfill(2))
+        return '%s:%s' % (self.hr % 24, str(self.min).zfill(2))
 
     def get_time_of_day_value(self):
-        return self.value % (24 * 60 * 60)
+        return self.value % self.DAY
 
     @staticmethod
     def compare_times(t1, t2):
@@ -59,7 +63,7 @@ class Segment:
             self.end.station.point
         )
 
-        self.duration = Trip_Time.compare_times(
+        self.duration = Time.compare_times(
             self.start.departure_time,
             self.end.arrival_time
         )
@@ -72,8 +76,8 @@ class Stop:
         if parent_station not in stations:
             stations[parent_station] = Station((parent_station, stop_name, lat, lon))
         self.id = parent_station
-        self.arrival_time = Trip_Time(arrival_time)
-        self.departure_time = Trip_Time(departure_time)
+        self.arrival_time = Time(arrival_time)
+        self.departure_time = Time(departure_time)
         self.station = stations[parent_station]
 
 class Trip:
