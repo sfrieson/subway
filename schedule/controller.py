@@ -37,6 +37,7 @@ def main(route, day_type):
     route['uptown_start'] = uptown_start.toDict()
     route['downtown_start'] = downtown_start.toDict()
     route['trips'] = trips
+    # ------------------------- #   
 
     timetable = model.get_timetable(trips, stations)
     route['timetable'] = timetable

@@ -1,5 +1,5 @@
 import sys
-from schedule import controller
+from schedule.controllers import app
 
 
 def main(args=None):
@@ -9,7 +9,7 @@ def main(args=None):
     if len(args) == 0:
         print("Please supply a route and day. `python -m schedule W weekday`")
     else:
-        controller.main(args[0], args[1])
+        app.make_route_timetable(args[0], args[1])
 
 
 if __name__ == "__main__":

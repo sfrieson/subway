@@ -3,3 +3,4 @@ data/*
 results/*
 !results/.gitkeep
 .vscode
+__pycache__
