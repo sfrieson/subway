@@ -9,7 +9,13 @@ class Route:
 
     def get_transfers(self):
         pass
-    
+    def get_longest_trip_distance(self):
+        longest = 0
+        for trip in self.trips:
+            longest = max(longest, trip.distance)
+
+        return longest
+
     def get_master_schedule(self):
         pass
 

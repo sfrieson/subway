@@ -34,8 +34,9 @@ class Station:
     def __init__ (self, data):
         self.id, self.name, latitude, longitude = data
         self.point = (latitude, longitude)
-        self.uptown = None
+        self.distance_from_start = None
         self.downtown = None
+        self.uptown = None
     
     def set_line_order (self, line_order):
         self.line_order = line_order
@@ -53,6 +54,9 @@ class Station:
                 next.uptown = self
             elif self.downtown is not next:
                 print('not equal...')
+    
+    def set_distance_from_start (self, distance):
+        self.distance_from_start = distance
 
 class Segment:
     def __init__(self, starting_stop, ending_stop):
@@ -85,14 +89,21 @@ class Trip:
         self.id = id
         self.stops = [Stop(s) for s in stops]
         self.segments = []
-
+        self.distance = 0
         starting_stop = None
         for ending_stop in self.stops:
             if starting_stop is not None:
-                self.segments.append(Segment(starting_stop, ending_stop))
-            
+                segment = Segment(starting_stop, ending_stop)
+                if starting_stop.direction == 0:
+                    self.segments.append(segment)
+                else:
+                    # https://stackoverflow.com/questions/8537916/whats-the-idiomatic-syntax-for-prepending-to-a-short-python-list
+                    self.segments.insert(0, segment)
+                
+                self.distance += segment.distance
+
             starting_stop = ending_stop
-        
+
         self.direction = self.stops[0].direction
 
         for i, stop in enumerate(self.stops):

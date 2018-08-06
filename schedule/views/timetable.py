@@ -1,13 +1,22 @@
 from schedule.controllers.station import Time
+def distance_to_int(mi):
+    """
+    Converts miles to tenths of a mile `round(mi * 100)`
+    """
+    return round(mi * 100)
 
 class SVG:
-    def __init__(self, artboard_size, data_size):
+    def __init__(self, artboard_size, data_size, horizontal_grid_marks):
         self.width, self.height = artboard_size
         self.data_width, self.data_height = data_size
 
-        self.grid_color = '#999999'
-        self.styles = [('st0', 'fill: none; stroke: %s;' % self.grid_color)]
         self.contents = []
+        self.grid_color = '#999999'
+        self.horizontal_grid_marks = horizontal_grid_marks
+        self.styles = [
+            ('.st0', 'fill: none; stroke: %s;' % self.grid_color),
+            ('.trip:hover line', 'stroke: #0000ff; stroke-width: 3;')
+        ]
 
 
     def add(self, contents):
@@ -28,20 +37,25 @@ class SVG:
         </svg>
         """.format(height = self.height, width = self.width, contents = ' '.join(contents))
 
-    def grid(self, x_inc, y_inc):
+    def grid(self, x_inc):
         verticals = [self.normalize_x(x) for x in range(0, self.data_width, x_inc)]
-        horizontals = [self.normalize_y(y) for y in range(0, self.data_height, y_inc)]
+        horizontals = [self.normalize_y(y) for y in self.horizontal_grid_marks]
 
-        lines = [((v, 0), (v, self.height)) for v in verticals] 
-        lines = lines + [((0, h), (self.width, h)) for h in horizontals]
-        return self.group((
-            'grid-marks',
-            ''.join([self.line(line, 'st0') for line in lines])
-        ))
+        lines = [((x, 0), (x, self.height)) for x in verticals] 
+        lines = lines + [((0, y), (self.width, y)) for y in horizontals]
+        return self.group(''.join([self.line(line, 'st0') for line in lines]), id='grid-marks')
 
     @staticmethod
-    def group(data):
-        return '<g id="%s">%s</g>' % data
+    def group(data, id=None, classname=None):
+        return '<g {id} {classname}>{content}</g>'.format(
+            content = data,
+            id = 'id="%s"' % id if id else '',
+            classname = 'class="%s"' % classname if classname else ''
+        )
+
+    header = """<?xml version="1.0" encoding="utf-8"?>
+    <!-- Generator: Adobe Illustrator 22.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+    """
 
     @staticmethod
     def line(line, classname=None):
@@ -66,10 +80,6 @@ class SVG:
         x, y = point
         return (self.normalize_x(x), self.normalize_y(y))
 
-    header = """<?xml version="1.0" encoding="utf-8"?>
-    <!-- Generator: Adobe Illustrator 22.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
-    """
-
     def normalized_line(self, line, classname):
         p1, p2 = line
         return self.line(
@@ -83,9 +93,9 @@ class SVG:
             header = self.header,
             body = self.body([
                     '<style type="text/css">',
-                    ''.join(['.%s { %s }' % style for style in self.styles]),
+                    ''.join(['%s { %s }' % style for style in self.styles]),
                     '</style>',
-                    self.grid(30 * Time.MINUTE, 1)
+                    self.grid(30 * Time.MINUTE)
                 ] + self.contents
             )
         )
@@ -93,7 +103,11 @@ class SVG:
 
 def draw(route):
     trip_paths = []
-    drawing = SVG((1720, 1080), (Time.DAY, len(route.get_stations())))
+    drawing = SVG(
+        (1720, 1080),
+        (Time.DAY, len(route.get_stations())),
+        [i for i in range(0, len(route.get_stations()))]
+    )
     for trip in route.trips:
         segment_paths = []
         for segment in trip.segments:
@@ -113,7 +127,7 @@ def draw(route):
             
             segment_paths.append((p1, p2))
 
-            # Some lines go off right side of the table, so duplicate them on the left side
+            # Some lines go off right side of the table, so duplicate them on the left side to come back in
             if ends_after_midnight:
                 duplicate_p1 = (start.departure_time.value - Time.DAY, start.station.line_order)
                 duplicate_p2 = (end.arrival_time.value - Time.DAY, end.station.line_order)
@@ -121,21 +135,19 @@ def draw(route):
                 segment_paths.append((duplicate_p1, duplicate_p2))
 
         trip_paths.append(
-            SVG.group((
-                trip.id,
-                [drawing.normalized_line(line, 'st1') for line in segment_paths]
-            ))
+            SVG.group(
+                ''.join([drawing.normalized_line(line, 'st1 %s' % trip.id) for line in segment_paths]),
+                id=trip.id,
+                classname='trip'
+            )
         )
 
-    drawing.add_style('st1', """
+    drawing.add_style('.st1', """
         fill: none;
         stroke: %s;
         stroke-width: 2;
     """ % '#000000')
 
-    drawing.add(SVG.group((
-        'routes',
-        trip_paths
-    )))
+    drawing.add(SVG.group(''.join(trip_paths), id='routes', classname='routes'))
     return drawing.print()
 
