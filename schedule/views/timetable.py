@@ -6,16 +6,16 @@ def distance_to_int(mi):
     return round(mi * 100)
 
 class SVG:
-    def __init__(self, artboard_size, data_size, horizontal_grid_marks):
+    def __init__(self, artboard_size, data_size, horizontal_grid_marks, route_color):
         self.width, self.height = artboard_size
         self.data_width, self.data_height = data_size
 
         self.contents = []
-        self.grid_color = '#999999'
+        self.grid_color = '999999'
         self.horizontal_grid_marks = horizontal_grid_marks
         self.styles = [
-            ('.st0', 'fill: none; stroke: %s;' % self.grid_color),
-            ('.trip:hover line', 'stroke: #0000ff; stroke-width: 3;')
+            ('.st0', 'fill: none; stroke: #%s;' % self.grid_color),
+            ('.trip:hover line', 'stroke: #%s; stroke-width: 3;' % route_color)
         ]
 
 
@@ -38,7 +38,9 @@ class SVG:
         """.format(height = self.height, width = self.width, contents = ' '.join(contents))
 
     def grid(self, x_inc):
-        verticals = [self.normalize_x(x) for x in range(0, self.data_width, x_inc)]
+        # self.data_width + 1 allows us to have one final grid mark at the end
+        # alternatively a stroke around the whole thing would do the same thing.
+        verticals = [self.normalize_x(x) for x in range(0, self.data_width + 1, x_inc)]
         horizontals = [self.normalize_y(y) for y in self.horizontal_grid_marks]
 
         lines = [((x, 0), (x, self.height)) for x in verticals] 
@@ -63,10 +65,10 @@ class SVG:
         x1, y1 = p1
         x2, y2 = p2
         return '<line {classname} x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" />'.format(
-            x1 = x1,
-            x2 = x2,
-            y1 = y1,
-            y2 = y2,
+            x1 = round(x1, 2),
+            x2 = round(x2, 2),
+            y1 = round(y1, 2),
+            y2 = round(y2, 2),
             classname = 'class="%s"' % classname if classname else ''
         )
 
@@ -105,8 +107,9 @@ def draw(route):
     trip_paths = []
     drawing = SVG(
         (1720, 1080),
-        (Time.DAY, len(route.get_stations())),
-        [i for i in range(0, len(route.get_stations()))]
+        (Time.DAY, len(route.get_stations()) - 1),
+        [i for i in range(0, len(route.get_stations()))],
+        route.color
     )
     for trip in route.trips:
         segment_paths = []

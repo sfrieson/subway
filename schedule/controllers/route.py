@@ -4,7 +4,7 @@ from math import inf as infinity
 class Route:
     def __init__ (self, route_data, trips):
         self.id, self.agency_id, self.letter, self.name, self.description, \
-        self.type, self.url, self. color, self.text_color = route_data
+        self.type, self.url, self.color, self.text_color = route_data
         self.trips = trips
 
     def get_transfers(self):
