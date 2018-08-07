@@ -1,116 +1,33 @@
-from schedule.controllers.station import Time
+from lib.classes import SVG, Time
+
 def distance_to_int(mi):
     """
     Converts miles to tenths of a mile `round(mi * 100)`
     """
     return round(mi * 100)
 
-class SVG:
-    def __init__(self, artboard_size, data_size, horizontal_grid_marks, route_color):
-        self.width, self.height = artboard_size
-        self.data_width, self.data_height = data_size
-
-        self.contents = []
-        self.grid_color = '999999'
-        self.horizontal_grid_marks = horizontal_grid_marks
-        self.styles = [
-            ('.st0', 'fill: none; stroke: #%s;' % self.grid_color),
-            ('.trip:hover line', 'stroke: #%s; stroke-width: 3;' % route_color)
-        ]
-
-
-    def add(self, contents):
-        self.contents.append(contents)
-
-    def add_style(self, name, defs):
-        self.styles.append((name, defs))
-    
-    def body(self, contents):
-        return """
-        <svg version="1.1" id="Layer_1"
-            xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            viewbox="0 0 {height} {width}" style="enable-background:new 0 0 {height} {width};"
-            x="0px" y="0px" xml:space="preserve"
-        >
-        {contents}
-        </svg>
-        """.format(height = self.height, width = self.width, contents = ' '.join(contents))
-
-    def grid(self, x_inc):
-        # self.data_width + 1 allows us to have one final grid mark at the end
-        # alternatively a stroke around the whole thing would do the same thing.
-        verticals = [self.normalize_x(x) for x in range(0, self.data_width + 1, x_inc)]
-        horizontals = [self.normalize_y(y) for y in self.horizontal_grid_marks]
-
-        lines = [((x, 0), (x, self.height)) for x in verticals] 
-        lines = lines + [((0, y), (self.width, y)) for y in horizontals]
-        return self.group(''.join([self.line(line, 'st0') for line in lines]), id='grid-marks')
-
-    @staticmethod
-    def group(data, id=None, classname=None):
-        return '<g {id} {classname}>{content}</g>'.format(
-            content = data,
-            id = 'id="%s"' % id if id else '',
-            classname = 'class="%s"' % classname if classname else ''
-        )
-
-    header = """<?xml version="1.0" encoding="utf-8"?>
-    <!-- Generator: Adobe Illustrator 22.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
-    """
-
-    @staticmethod
-    def line(line, classname=None):
-        p1, p2 = line
-        x1, y1 = p1
-        x2, y2 = p2
-        return '<line {classname} x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" />'.format(
-            x1 = round(x1, 2),
-            x2 = round(x2, 2),
-            y1 = round(y1, 2),
-            y2 = round(y2, 2),
-            classname = 'class="%s"' % classname if classname else ''
-        )
-
-    def normalize_x(self, x):
-        return x / self.data_width * self.width
-
-    def normalize_y(self, y):
-        return y / self.data_height * self.height
-
-    def normalize_point(self, point):
-        x, y = point
-        return (self.normalize_x(x), self.normalize_y(y))
-
-    def normalized_line(self, line, classname):
-        p1, p2 = line
-        return self.line(
-            (self.normalize_point(p1), self.normalize_point(p2)),
-            classname
-        )
-
-    def print(self):
-        return """{header}
-        {body}""".format(
-            header = self.header,
-            body = self.body([
-                    '<style type="text/css">',
-                    ''.join(['%s { %s }' % style for style in self.styles]),
-                    '</style>',
-                    self.grid(30 * Time.MINUTE)
-                ] + self.contents
-            )
-        )
-
-
 def draw(route):
+    grid_color = '999999'
     trip_paths = []
-    drawing = SVG(
-        (1720, 1080),
-        (Time.DAY, len(route.get_stations()) - 1),
-        [i for i in range(0, len(route.get_stations()))],
-        route.color
+    data_width = Time.DAY
+    data_height = len(route.get_stations()) - 1
+    drawing = SVG((1720, 1080), (data_width, data_height))
+
+    # Make grid
+    drawing.add_style('.st0', 'fill: none; stroke: #%s;' % grid_color)
+
+    # self.data_width + 1 allows us to have one final grid mark at the end
+    # alternatively a stroke around the whole thing would do the same thing.
+    verticals = [drawing.normalize_x(x) for x in range(0, data_width + 1, 30 * Time.MINUTE)]
+    horizontals = [ drawing.normalize_y(y) for y in [i for i in range(0, len(route.get_stations()))] ]
+
+    lines = [((x, 0), (x, drawing.height)) for x in verticals] 
+    lines = lines + [((0, y), (drawing.width, y)) for y in horizontals]
+    drawing.add(
+        drawing.group(''.join([drawing.line(line, 'st0') for line in lines]), id='grid-marks')
     )
+
+    drawing.add_style('.trip:hover line', 'stroke: #%s; stroke-width: 3;' % route.color)
     for trip in route.trips:
         segment_paths = []
         for segment in trip.segments:

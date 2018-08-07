@@ -1,4 +1,4 @@
-from schedule import db
+from lib import db
 
 def get(route_id, day):
     return db.get_many("""
