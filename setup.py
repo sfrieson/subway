@@ -6,6 +6,9 @@ setup(name='subway',
       entry_points={
           'schedule': [
               'schedule = schedule.__main__:main'
+          ],
+          'map_shape': [
+              'map_shape = map_shape.__main__:main'
           ]
       },
       )

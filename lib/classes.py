@@ -73,12 +73,12 @@ class Time:
 class Station:
     stations = {}
     def __init__ (self, data):
-        self.id, self.name, latitude, longitude = data
-        self.point = (latitude, longitude)
+        self.id, self.name, self.pickup_type, longitude, latitude = data
+        self.point = (longitude, latitude)
         self.distance_from_start = None
         self.downtown = None
         self.uptown = None
-    
+        
     def set_line_order (self, line_order):
         self.line_order = line_order
 
@@ -88,13 +88,29 @@ class Station:
                 self.uptown = next
                 next.downtown = self
             elif self.uptown is not next:
-                print('not equal...')
+                current = self.uptown
+                found = False
+                while current:
+                    if current.uptown is next:
+                        found = True
+                        self.uptown = current
+                    if found:
+                        break
+                    current = current.uptown
         elif direction == 1:
             if self.downtown is None:
                 self.downtown = next
                 next.uptown = self
             elif self.downtown is not next:
-                print('not equal...')
+                current = self.downtown
+                found = False
+                while current:
+                    if current.downtown is next:
+                        found = True
+                        self.downtown = current
+                    if found:
+                        break
+                    current = current.downtown
     
     def set_distance_from_start (self, distance):
         self.distance_from_start = distance
@@ -116,10 +132,10 @@ class Segment:
 class Stop:
     def __init__ (self, data):
         self.trip_id, self.sequence, parent_station, self.direction, stop_name, \
-        arrival_time, departure_time, lat, lon = data
+        arrival_time, departure_time, pickup_type, lon, lat = data
 
         if parent_station not in Station.stations:
-            Station.stations[parent_station] = Station((parent_station, stop_name, lat, lon))
+            Station.stations[parent_station] = Station((parent_station, stop_name, pickup_type, lon, lat))
         self.id = parent_station
         self.arrival_time = Time(arrival_time)
         self.departure_time = Time(departure_time)
@@ -173,12 +189,38 @@ class Trip:
             stations_ordered.append(tmp_station)
 
 class SVG:
-    def __init__(self, artboard_size, data_size):
-        self.width, self.height = artboard_size
-        self.data_width, self.data_height = data_size
+    annotation = {
+        'plain': '',
+        'illustrator': """<?xml version="1.0" encoding="utf-8"?>
+    <!-- Generator: Adobe Illustrator 22.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+    """
+    }
+    type_attributes = {
+        'plain': 'xmlns="http://www.w3.org/2000/svg" viewBox="{origin_x} {origin_y} {width} {height}"',
+        'illustrator': """
+            xmlns="http://www.w3.org/2000/svg"
+            viewbox="{origin_x} {origin_y} {width} {height}"
+            version="1.1" id="Layer_1"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            style="enable-background:new {origin_x} {origin_y} {width} {height};"
+            x="0px" y="0px" xml:space="preserve"
+        """
+    }
+    def __init__(self, artboard_size, data_size, svg_type='plain'):
+        if len(artboard_size) == 4:
+            self.origin_x, self.origin_y, self.width, self.height = artboard_size
+        else:
+            self.origin_x, self.origin_y = 0, 0
+            self.width, self.height = artboard_size
+        if len(data_size) == 4:
+            self.data_origin_x, self.data_origin_y, self.data_width, self.data_height = data_size
+        else:
+            self.data_origin_x, self.data_origin_y = 0, 0
+            self.data_width, self.data_height = data_size
         self.contents = []
         self.styles = []
-
+        self.header = self.annotation[svg_type]
+        self.attributes = self.type_attributes[svg_type]
 
     def add(self, contents):
         self.contents.append(contents)
@@ -188,15 +230,18 @@ class SVG:
     
     def body(self, contents):
         return """
-        <svg version="1.1" id="Layer_1"
-            xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            viewbox="0 0 {height} {width}" style="enable-background:new 0 0 {height} {width};"
-            x="0px" y="0px" xml:space="preserve"
-        >
+        <svg {attributes}>
         {contents}
         </svg>
-        """.format(height = self.height, width = self.width, contents = ' '.join(contents))
+        """.format(
+            attributes = self.attributes.format(
+                origin_x = self.origin_x,
+                origin_y = self.origin_y,
+                height = self.height,
+                width = self.width,
+            ),
+            contents = ' '.join(contents)
+        )
 
     @staticmethod
     def group(data, id=None, classname=None):
@@ -205,10 +250,6 @@ class SVG:
             id = 'id="%s"' % id if id else '',
             classname = 'class="%s"' % classname if classname else ''
         )
-
-    header = """<?xml version="1.0" encoding="utf-8"?>
-    <!-- Generator: Adobe Illustrator 22.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
-    """
 
     @staticmethod
     def line(line, classname=None):
@@ -220,6 +261,14 @@ class SVG:
             x2 = round(x2, 2),
             y1 = round(y1, 2),
             y2 = round(y2, 2),
+            classname = 'class="%s"' % classname if classname else ''
+        )
+    
+    @staticmethod
+    def path(points, classname=None):
+        points = ' L'.join(map(lambda x: "%s,%s" % x, points))
+        return '<path {classname} d="M{points}" />'.format(
+            points = points,
             classname = 'class="%s"' % classname if classname else ''
         )
 

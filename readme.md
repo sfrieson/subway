@@ -3,3 +3,7 @@ SQL Scripts:
 
 Python Script:
 `python3 tasks/<script filename>.py`
+
+
+Remember:
+(x, y) = (lon, lat)
