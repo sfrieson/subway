@@ -1,12 +1,20 @@
 from math import inf as infinity
 import re
 from lib import utils
+from lib.graph import *
 
-class Route:
+class Route(Graph):
     def __init__ (self, route_data, trips):
+        super().__init__()
         self.id, self.agency_id, self.letter, self.name, self.description, \
         self.type, self.url, self.color, self.text_color = route_data
         self.trips = trips
+
+        for trip in trips:
+            for stop in trip.stops:
+                self.add_vertex(stop.station)
+            for segment in trip.segments:
+                self.add_edge(segment)
 
     def get_transfers(self):
         pass
@@ -70,14 +78,16 @@ class Time:
     def compare_times(t1, t2):
         return t2.value - t1.value
 
-class Station:
+class Station(Vertex):
     stations = {}
     def __init__ (self, data):
-        self.id, self.name, self.pickup_type, longitude, latitude = data
+        id, self.name, self.pickup_type, longitude, latitude = data
+        super().__init__(id)
         self.point = (longitude, latitude)
         self.distance_from_start = None
         self.downtown = None
         self.uptown = None
+        Station.stations[id] = self
         
     def set_line_order (self, line_order):
         self.line_order = line_order
@@ -115,8 +125,11 @@ class Station:
     def set_distance_from_start (self, distance):
         self.distance_from_start = distance
 
-class Segment:
+class Segment(Edge):
+    segments = {}
     def __init__(self, starting_stop, ending_stop):
+        super().__init__(starting_stop.station, ending_stop.station)
+        Segment.segments[starting_stop.id + ending_stop.id] = self
         self.start = starting_stop
         self.end = ending_stop
         self.distance = utils.calculate_distance(
@@ -135,7 +148,7 @@ class Stop:
         arrival_time, departure_time, pickup_type, lon, lat = data
 
         if parent_station not in Station.stations:
-            Station.stations[parent_station] = Station((parent_station, stop_name, pickup_type, lon, lat))
+            Station((parent_station, stop_name, pickup_type, lon, lat))
         self.id = parent_station
         self.arrival_time = Time(arrival_time)
         self.departure_time = Time(departure_time)
@@ -150,7 +163,12 @@ class Trip:
         starting_stop = None
         for ending_stop in self.stops:
             if starting_stop is not None:
-                segment = Segment(starting_stop, ending_stop)
+                segment_id = starting_stop.id + ending_stop.id
+                if segment_id in Segment.segments:
+                    segment = Segment.segments[segment_id]
+                else:
+                    segment = Segment(starting_stop, ending_stop)
+
                 if starting_stop.direction == 0:
                     self.segments.append(segment)
                 else:
@@ -279,8 +297,10 @@ class SVG:
         return y / self.data_height * self.height
 
     def normalize_point(self, point):
-        x, y = point
-        return (self.normalize_x(x), self.normalize_y(y))
+        return (
+            self.normalize_x(point[0]),
+            self.normalize_y(point[1])
+        )
 
     def normalized_line(self, line, classname):
         p1, p2 = line

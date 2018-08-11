@@ -1,10 +1,13 @@
 from lib.classes import SVG, Time
 
+def change_precision(num, places=0):
+    return round(num * 10 ** places)
+
 def distance_to_int(mi):
     """
     Converts miles to tenths of a mile `round(mi * 100)`
     """
-    return round(mi * 100)
+    return round(change_precision(mi, 2))
 
 def draw(route):
     grid_color = '999999'
@@ -18,13 +21,18 @@ def draw(route):
 
     # self.data_width + 1 allows us to have one final grid mark at the end
     # alternatively a stroke around the whole thing would do the same thing.
-    verticals = [drawing.normalize_x(x) for x in range(0, data_width + 1, 30 * Time.MINUTE)]
-    horizontals = [ drawing.normalize_y(y) for y in [i for i in range(0, len(route.get_stations()))] ]
+    stations = route.get_stations()
+    y_grid_marks = {}
+    for station in stations:
+        y_grid_marks[station.id] = station
 
-    lines = [((x, 0), (x, drawing.height)) for x in verticals] 
-    lines = lines + [((0, y), (drawing.width, y)) for y in horizontals]
+    verticals = [drawing.normalize_x(x) for x in range(0, data_width + 1, 30 * Time.MINUTE)]
+    horizontals = [ drawing.normalize_y(y) for y in [i for i in range(0, len(stations))] ]
+
+    grid_lines = [((x, 0), (x, drawing.height)) for x in verticals] 
+    grid_lines = grid_lines + [((0, y), (drawing.width, y)) for y in horizontals]
     drawing.add(
-        drawing.group(''.join([drawing.line(line, 'st0') for line in lines]), id='grid-marks')
+        drawing.group(''.join([drawing.line(line, 'st0') for line in grid_lines]), id='grid-marks')
     )
 
     drawing.add_style('.trip:hover line', 'stroke: #%s; stroke-width: 3;' % route.color)
