@@ -4,29 +4,27 @@ from lib import utils
 from lib.graph import *
 
 class Route(Graph):
+    stations = {}
+    tracks = {}
+
     def __init__ (self, route_data, trips):
         super().__init__()
         self.id, self.agency_id, self.letter, self.name, self.description, \
         self.type, self.url, self.color, self.text_color = route_data
         self.trips = trips
 
-        for trip in trips:
-            for stop in trip.stops:
-                self.add_vertex(stop.station)
-            for segment in trip.segments:
-                self.add_edge(segment)
+        for station in self.stations.values():
+            self.add_vertex(station)
 
-    def get_transfers(self):
-        pass
+        for track in self.tracks.values():
+            self.add_edge(track)
+
     def get_longest_trip_distance(self):
         longest = 0
         for trip in self.trips:
             longest = max(longest, trip.distance)
 
         return longest
-
-    def get_master_schedule(self):
-        pass
 
     def get_time_range(self):
         earliest = infinity
@@ -45,12 +43,7 @@ class Route(Graph):
         return (earliest, latest)
 
     def get_stations(self):
-        stations = set()
-        for trip in self.trips:
-            for stop in trip.stops:
-                stations.add(stop.station)
-
-        return stations
+        return Route.stations.values()
 
 class Time:
     time_parse = re.compile(r"(?P<hr>\d{2}):(?P<min>\d{2}):(?P<sec>\d{2})")
@@ -79,7 +72,6 @@ class Time:
         return t2.value - t1.value
 
 class Station(Vertex):
-    stations = {}
     def __init__ (self, data):
         id, self.name, self.pickup_type, longitude, latitude = data
         super().__init__(id)
@@ -87,7 +79,7 @@ class Station(Vertex):
         self.distance_from_start = None
         self.downtown = None
         self.uptown = None
-        Station.stations[id] = self
+        Route.stations[id] = self
         
     def set_line_order (self, line_order):
         self.line_order = line_order
@@ -125,17 +117,26 @@ class Station(Vertex):
     def set_distance_from_start (self, distance):
         self.distance_from_start = distance
 
-class Segment(Edge):
-    segments = {}
+class Track(Edge):
+    def __init__(self, starting_station, ending_station):
+        super().__init__(starting_station, ending_station)
+        self.start = starting_station
+        self.end = ending_station
+        self.distance = utils.calculate_distance(
+            starting_station.point,
+            ending_station.point
+        )
+        Route.tracks[starting_station.id + ending_station.id] = self
+
+class Segment:
     def __init__(self, starting_stop, ending_stop):
-        super().__init__(starting_stop.station, ending_stop.station)
-        Segment.segments[starting_stop.id + ending_stop.id] = self
         self.start = starting_stop
         self.end = ending_stop
-        self.distance = utils.calculate_distance(
-            self.start.station.point,
-            self.end.station.point
-        )
+
+        track_id = self.start.station.id + self.end.station.id
+        if track_id not in Route.tracks:
+            Track(starting_stop.station, ending_stop.station)
+        self.track = Route.tracks[track_id]
 
         self.duration = Time.compare_times(
             self.start.departure_time,
@@ -147,27 +148,24 @@ class Stop:
         self.trip_id, self.sequence, parent_station, self.direction, stop_name, \
         arrival_time, departure_time, pickup_type, lon, lat = data
 
-        if parent_station not in Station.stations:
-            Station((parent_station, stop_name, pickup_type, lon, lat))
         self.id = parent_station
         self.arrival_time = Time(arrival_time)
         self.departure_time = Time(departure_time)
-        self.station = Station.stations[parent_station]
+
+        if parent_station not in Route.stations:
+            Station((parent_station, stop_name, pickup_type, lon, lat))
+        self.station = Route.stations[parent_station]
 
 class Trip:
     def __init__ (self, id, stops):
         self.id = id
         self.stops = [Stop(s) for s in stops]
         self.segments = []
-        self.distance = 0
+
         starting_stop = None
         for ending_stop in self.stops:
             if starting_stop is not None:
-                segment_id = starting_stop.id + ending_stop.id
-                if segment_id in Segment.segments:
-                    segment = Segment.segments[segment_id]
-                else:
-                    segment = Segment(starting_stop, ending_stop)
+                segment = Segment(starting_stop, ending_stop)
 
                 if starting_stop.direction == 0:
                     self.segments.append(segment)
@@ -175,23 +173,21 @@ class Trip:
                     # https://stackoverflow.com/questions/8537916/whats-the-idiomatic-syntax-for-prepending-to-a-short-python-list
                     self.segments.insert(0, segment)
                 
-                self.distance += segment.distance
-
             starting_stop = ending_stop
 
         self.direction = self.stops[0].direction
 
         for i, stop in enumerate(self.stops):
             if i < len(self.stops) - 1:
-                currentStation = Station.stations[stop.id]
-                nextStation = Station.stations[self.stops[i + 1].id]
+                currentStation = Route.stations[stop.id]
+                nextStation = Route.stations[self.stops[i + 1].id]
                 currentStation.set_next(nextStation, self.direction)
 
         stations_ordered = []
 
         # Arbitrary element
         # https://stackoverflow.com/questions/3097866/access-an-arbitrary-element-in-a-dictionary-in-python
-        tmp_station = next(iter(Station.stations.values()))
+        tmp_station = next(iter(Route.stations.values()))
 
         # get to the beginning
         while tmp_station.uptown:

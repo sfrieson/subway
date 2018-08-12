@@ -7,15 +7,19 @@ class Vertex:
     def __str__(self):
         return str(self.id)
 
+    __repr__ = __str__
+
 class Edge:
     def __init__(self, v1, v2):
-        self.id = set((v1, v2))
+        self.id = (v1, v2)
     
     def __str__(self):
-        return '%s%s' % tuple(self.id)
+        return '%s%s' % self.id
 
     def __getitem__(self, index):
-        return tuple(self.id)[index]
+        return self.id[index]
+
+    __repr__ = __str__
 
 class Graph:
     def __init__(self, vertices=[], edges=[]):
@@ -39,8 +43,8 @@ class Graph:
 
         if isinstance(arg1, Edge):
             edge = arg1
-            v1 = arg1[0]
-            v2 = arg1[1]
+            v1 = arg1.id[0]
+            v2 = arg1.id[1]
 
         if edge is None:
             edge = Edge(v1, v2)

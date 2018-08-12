@@ -3,11 +3,50 @@ from lib.classes import SVG, Time
 def change_precision(num, places=0):
     return round(num * 10 ** places)
 
+
 def distance_to_int(mi):
     """
     Converts miles to tenths of a mile `round(mi * 100)`
     """
     return round(change_precision(mi, 2))
+
+
+class Line:
+    def __init__(self, points):
+        self.p1, self.p2 = points
+    
+    def value(self):
+        return (self.p1.value(), self.p2.value())
+
+
+class Point:
+    def __init__(self, data):
+        self.x, self.y = data
+
+    def value(self):
+        return (self.x.value, self.y.value)
+
+
+class Axis:
+    def __init__(self, value):
+        self.value = value
+
+
+class X(Axis):
+    def __init__(self, time, time_of_day=False, time_minus_day=False):
+        if (time_of_day):
+            value = time.get_time_of_day_value()
+        elif (time_of_day):
+            value = time.value - Time.DAY
+        else:
+            value = time.value
+        
+        super().__init__(value)
+
+class Y(Axis):
+    def __init__(self, station):
+        super().__init__(station.line_order)
+
 
 def draw(route):
     grid_color = '999999'
@@ -22,10 +61,7 @@ def draw(route):
     # self.data_width + 1 allows us to have one final grid mark at the end
     # alternatively a stroke around the whole thing would do the same thing.
     stations = route.get_stations()
-    y_grid_marks = {}
-    for station in stations:
-        y_grid_marks[station.id] = station
-
+   
     verticals = [drawing.normalize_x(x) for x in range(0, data_width + 1, 30 * Time.MINUTE)]
     horizontals = [ drawing.normalize_y(y) for y in [i for i in range(0, len(stations))] ]
 
@@ -34,6 +70,10 @@ def draw(route):
     drawing.add(
         drawing.group(''.join([drawing.line(line, 'st0') for line in grid_lines]), id='grid-marks')
     )
+
+    y = {}
+    for station in stations:
+        y[station.id] = Y(station)
 
     drawing.add_style('.trip:hover line', 'stroke: #%s; stroke-width: 3;' % route.color)
     for trip in route.trips:
@@ -44,27 +84,27 @@ def draw(route):
             starts_before_midnight = start.departure_time.value < Time.DAY
             ends_after_midnight = end.arrival_time.value > Time.DAY
 
-            p1 = (
-                start.departure_time.value if starts_before_midnight else start.departure_time.get_time_of_day_value(),
-                start.station.line_order
-            )
-            p2 = (
-                end.arrival_time.value if starts_before_midnight else end.arrival_time.get_time_of_day_value(),
-                end.station.line_order
-            )
+            p1 = Point((
+                X(start.departure_time, time_of_day=(not starts_before_midnight)), #x[start.departure_time.value]
+                y[start.station.id]
+            ))
+            p2 = Point((
+                X(end.arrival_time, time_of_day=(not starts_before_midnight)), #x[end.arrival_time.value]
+                y[end.station.id]
+            ))
             
-            segment_paths.append((p1, p2))
+            segment_paths.append(Line((p1, p2)))
 
             # Some lines go off right side of the table, so duplicate them on the left side to come back in
             if ends_after_midnight:
-                duplicate_p1 = (start.departure_time.value - Time.DAY, start.station.line_order)
-                duplicate_p2 = (end.arrival_time.value - Time.DAY, end.station.line_order)
+                duplicate_p1 = Point((X(start.departure_time, time_minus_day=True ), Y(start.station)))
+                duplicate_p2 = Point((X(end.arrival_time, time_minus_day=True ), y[end.station.id]))
 
-                segment_paths.append((duplicate_p1, duplicate_p2))
+                segment_paths.append(Line((duplicate_p1, duplicate_p2)))
 
         trip_paths.append(
             SVG.group(
-                ''.join([drawing.normalized_line(line, 'st1 %s' % trip.id) for line in segment_paths]),
+                ''.join([drawing.normalized_line(line.value(), 'st1 %s' % trip.id) for line in segment_paths]),
                 id=trip.id,
                 classname='trip'
             )
