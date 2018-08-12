@@ -43,7 +43,7 @@ class Route(Graph):
         return (earliest, latest)
 
     def get_stations(self):
-        return Route.stations.values()
+        return [x for x in Route.stations.values()]
 
 class Time:
     time_parse = re.compile(r"(?P<hr>\d{2}):(?P<min>\d{2}):(?P<sec>\d{2})")
@@ -298,7 +298,7 @@ class SVG:
             self.normalize_y(point[1])
         )
 
-    def normalized_line(self, line, classname):
+    def normalize_line(self, line, classname):
         p1, p2 = line
         return self.line(
             (self.normalize_point(p1), self.normalize_point(p2)),
