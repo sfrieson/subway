@@ -57,6 +57,8 @@ class Y(Axis):
 def draw(route):
     grid_color = '999999'
     trip_paths = []
+    endpoints = route.find_end_points()
+    
     stations = sorted(route.get_stations(), key=lambda s: s.line_order)
 
     y_points = {}
@@ -95,11 +97,11 @@ def draw(route):
             ends_after_midnight = end.arrival_time.value > Time.DAY
 
             p1 = Point(
-                X(start.departure_time, time_of_day=(not starts_before_midnight)), #x[start.departure_time.value]
+                X(start.departure_time, time_of_day=(not starts_before_midnight)),
                 y_points[start.station.id]
             )
             p2 = Point(
-                X(end.arrival_time, time_of_day=(not starts_before_midnight)), #x[end.arrival_time.value]
+                X(end.arrival_time, time_of_day=(not starts_before_midnight)),
                 y_points[end.station.id]
             )
             

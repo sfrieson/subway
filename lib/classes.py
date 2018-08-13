@@ -45,6 +45,12 @@ class Route(Graph):
     def get_stations(self):
         return [x for x in Route.stations.values()]
 
+    def find_end_points(self):
+        """Find all the end points for the given route"""
+
+        # End points of a line are assumed to only have 1 indegree and 1 outdegree which is one for either direction since this is a directed graph.
+        return [v for v, d in filter(lambda vertex_degree: vertex_degree[1]['indegree'] == 1 or vertex_degree[1]['outdegree'] == 1, self.get_all_degrees())]
+
 class Time:
     time_parse = re.compile(r"(?P<hr>\d{2}):(?P<min>\d{2}):(?P<sec>\d{2})")
     SECOND = 1
@@ -71,7 +77,7 @@ class Time:
     def compare_times(t1, t2):
         return t2.value - t1.value
 
-class Station(Vertex):
+class Station(DirectedVertex):
     def __init__ (self, data):
         id, self.name, self.pickup_type, longitude, latitude = data
         super().__init__(id)
@@ -117,6 +123,9 @@ class Station(Vertex):
     def set_distance_from_start (self, distance):
         self.distance_from_start = distance
 
+    def __str__(self):
+        return 'Station(%s)' % self.name
+
 class Track(Edge):
     def __init__(self, starting_station, ending_station):
         super().__init__(starting_station, ending_station)
@@ -127,6 +136,9 @@ class Track(Edge):
             ending_station.point
         )
         Route.tracks[starting_station.id + ending_station.id] = self
+    
+    def __str__(self):
+        return 'Track(%s, %s)' % (self.start.name, self.end.name)
 
 class Segment:
     def __init__(self, starting_stop, ending_stop):
