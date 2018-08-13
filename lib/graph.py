@@ -119,9 +119,10 @@ class Graph:
         
         return v.degrees
 
-    def depth_first(self, vertex, vertices=None, edges=None, visited=set()):
-        """Does a depth first search starting at the given vertex. `edges and `vertices` callback functions, if supplied, will be called for each
-        edge as it is travelled and each vertex as it is entered"""
+    def depth_first(self, vertex, vertices=None, edges=None, visited=set(), value=None):
+        """Does a depth first search starting at the given vertex. `edges` and `vertices` callback functions, if supplied, will be called for each
+        edge as it is travelled and each vertex as it is entered. The `value` is supplied as the second argument to both and is updated by 
+        the return of both."""
         visited.add(vertex)
 
         if vertex.adjacent is None:
@@ -132,19 +133,20 @@ class Graph:
             for v in vertex.outdegrees:
                 if v not in visited:
                     if edges is not None:
-                        edges(self.find_edge(vertex, v))
+                        value = edges(self.find_edge(vertex, v), value)
                     if vertices is not None:
-                        vertices(v)
-                    self.depth_first(v, vertices=vertices, edges=edges, visited=visited)
+                        value = vertices(v, value)
+                    self.depth_first(v, vertices=vertices, edges=edges, visited=visited, value=value)
         else:
             # Traverse all adjacent
             for v in vertex.adjacent:
                 if v not in visited:
                     if edges is not None:
-                        edges(self.find_edge(vertex, v))
+                        value = edges(self.find_edge(vertex, v), value)
                     if vertices is not None:
-                        vertices(v)
-                    self.depth_first(v, vertices=vertices, edges=edges, visited=visited)
+                        value = vertices(v, value)
+                    self.depth_first(v, vertices=vertices, edges=edges, visited=visited, value=value)
+        return value
     
     def find_edge(self, v1, v2):
         edge = None

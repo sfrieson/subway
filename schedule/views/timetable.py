@@ -50,36 +50,51 @@ class X(Axis):
 
 class Y(Axis):
     def __init__(self, station):
-        super().__init__(station.line_order)
+        super().__init__(station.distance_from_start)
         self.data = station
 
 
 def draw(route):
     grid_color = '999999'
     trip_paths = []
+
     endpoints = route.find_end_points()
-    
-    stations = sorted(route.get_stations(), key=lambda s: s.line_order)
+    uptown = None
+    downtown = None
+    for station in endpoints:
+        if station.downtown:
+            uptown = station
+        else:
+            downtown = station
 
     y_points = {}
-    for index, station in enumerate(stations):
-        y_points[station.id] = Y(station)
-        y_points[station.id].value = index
+
+    y_points[uptown.id] = Y(uptown)
+    y_points[uptown.id].value = 0
+    stations = [uptown, None]
+
+    def calculate_distance(track, distance_from_start):
+        distance_from_start += track.distance
+        track.v2.set_distance_from_start(distance_from_start)
+        y_points[track.v2.id] = Y(track.v2)
+        return distance_from_start
+
+    route.depth_first(uptown, value=0, edges=calculate_distance)
 
     # Make grid
     data_width = Time.DAY
-    data_height = len(stations) - 1
+    data_height = y_points[downtown.id].value
     drawing = SVG((1720, 1080), (data_width, data_height))
     drawing.add_style('.st0', 'fill: none; stroke: #%s;' % grid_color)
    
     # self.data_width + 1 allows us to have one final grid mark at the end
     # alternatively a stroke around the whole thing would do the same thing.
     verticals = [x for x in range(0, data_width + 1, 30 * Time.MINUTE)]
-    horizontals = [y_points[s.id] for s in stations]
+    horizontals = [s for s in y_points.values()]
     
     grid_lines = [Line(
-        Point(X(x), y_points[stations[0].id]),
-        Point(X(x), y_points[stations[len(stations) - 1].id])
+        Point(X(x), y_points[uptown.id]),
+        Point(X(x), y_points[downtown.id])
     ) for x in verticals] 
 
     grid_lines = grid_lines + [Line(Point(X(0), y), Point(X(data_width), y)) for y in horizontals]

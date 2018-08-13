@@ -11,7 +11,7 @@ def make_route_timetable(route_id, day_type):
     trips = station_controller.get_route_trips(route_id, day_type)
     route = route_controller.get(route_id, trips)
     
-    route.depth_first(route.get_stations()[0], edges=print)
+    # route.depth_first(route.get_stations()[0], edges=print)
     table = timetable.draw(route)
 
     svg_file = open('./results/%s-times.svg' % route.id, 'w')
