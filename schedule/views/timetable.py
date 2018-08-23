@@ -71,12 +71,13 @@ def draw(route):
 
     y_points[uptown.id] = Y(uptown)
     y_points[uptown.id].value = 0
-    stations = [uptown, None]
+    stations = [uptown]
 
     def calculate_distance(track, distance_from_start):
         distance_from_start += track.distance
         track.v2.set_distance_from_start(distance_from_start)
         y_points[track.v2.id] = Y(track.v2)
+        stations.append(track.v2)
         return distance_from_start
 
     route.depth_first(uptown, value=0, edges=calculate_distance)
@@ -137,12 +138,25 @@ def draw(route):
             )
         )
 
+
     drawing.add_style('.st1', """
         fill: none;
         stroke: %s;
         stroke-width: 2;
     """ % '#000000')
 
+    drawing.add_style('.st2', """
+        fill: none;
+        stroke: %s;
+        stroke-width: 2;
+    """ % '#000000')
+
     drawing.add(SVG.group(''.join(trip_paths), id='routes', classname='routes'))
+    drawing.add(
+        SVG.group(
+            ''.join([SVG.text(station.name, (5, drawing.normalize_y(y_points[station.id].value))) for station in stations]),
+            classname='labels'
+        )
+    )
     return drawing.print()
 

@@ -1,7 +1,7 @@
 from math import inf as infinity
 import re
 from lib import utils
-from lib.graph import *
+from lib.graph import Graph, Edge, DirectedVertex
 
 class Route(Graph):
     stations = {}
@@ -328,3 +328,7 @@ class SVG:
                 ] + self.contents
             )
         )
+
+    @staticmethod
+    def text(text, point):
+        return '<text x="{x}" y="{y}">{text}</text>'.format(x=point[0], y=point[1], text=text)
