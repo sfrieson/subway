@@ -4,7 +4,10 @@ DROP TABLE IF EXISTS
   calendar,
   routes,
   shapes,
+  stations,
+  station_entrances,
   stop_times,
   stops,
   transfers,
-  trips;
+  trips
+  ;

@@ -90,3 +90,50 @@ CREATE TABLE stop_times (
   drop_off_type SMALLINT,
   shape_dist_traveled BOOLEAN -- EMPTY
 );
+
+CREATE TABLE stations (
+  station_id SMALLINT,
+  complex_id SMALLINT,
+  stop_id VARCHAR(8) PRIMARY KEY REFERENCES stops (stop_id),
+  division VARCHAR(32), -- ESTIMATE (ENUM) 
+  line VARCHAR(255), -- ENUM
+  stop_name VARCHAR(255),
+  borough VARCHAR(2), -- ENUM
+  daytime_routes VARCHAR(10), -- SPACE SEPARATED LIST
+  structure VARCHAR(16), -- ENUM
+  lat FLOAT,
+  lon FLOAT
+);
+
+CREATE TABLE station_entrances (
+  division VARCHAR(32),
+  line VARCHAR(32),
+  station_name VARCHAR(255),
+  station_lat FLOAT,
+  station_lon FLOAT,
+  route_1 VARCHAR(2),
+  route_2 VARCHAR(2),
+  route_3 VARCHAR(2),
+  route_4 VARCHAR(2),
+  route_5 VARCHAR(2),
+  route_6 VARCHAR(2),
+  route_7 VARCHAR(2),
+  route_8 VARCHAR(2),
+  route_9 VARCHAR(2),
+  route_10 VARCHAR(2),
+  route_11 VARCHAR(2),
+  entrance_type VARCHAR(10),
+  entry VARCHAR(10),
+  exit_only VARCHAR(10),
+  vending VARCHAR(10),
+  staffing VARCHAR(10),
+  staff_Hours VARCHAR(255),
+  ada VARCHAR(10),
+  ada_notes VARCHAR(255),
+  free_crossover VARCHAR(10),
+  north_south_street VARCHAR(32),
+  east_west_street VARCHAR(32),
+  corner VARCHAR(5),
+  lat FLOAT,
+  lon FLOAT
+);

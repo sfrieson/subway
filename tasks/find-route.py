@@ -32,7 +32,7 @@ class Station:
 
     def __repr__(self):
         return '{"id": "%s", "name": "%s", "uptown": %s, "downtown": %s, ' \
-            '"position": %s, "distance": %c}' % \
+            '"position": %s}' % \
             (
                 self.id, self.name,
                 '"%s"' % self.uptown.id if self.uptown else 'null',
