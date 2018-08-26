@@ -4,22 +4,35 @@ from lib import utils
 from lib.graph import Graph, Edge, DirectedVertex
 
 class Route(Graph):
-    stations = {}
-    tracks = {}
+    """
+    A Route or a line is best referenced a general classification of several train Trips servicing geographic locations with affordance for some difference depending on time of day or just general splitting (the A train forks 3 directions in Queens).
+    """
 
-    def __init__ (self, route_data, trips):
+    def __init__ (self, route_data):
         super().__init__()
         self.id, self.agency_id, self.letter, self.name, self.description, \
         self.type, self.url, self.color, self.text_color = route_data
-        self.trips = trips
+        self.stations = {}
+        self.stops = {}
+        self.tracks = {}
+        self.trips = {}
 
-        for station in self.stations.values():
-            self.add_vertex(station)
+    def add_stop(self, stop):
+        self.stops[stop.id] = stop
+        self.stations[stop.station.id] = stop.station
+        self.add_vertex(stop.station)
+    
+    def add_track(self, track):
+        self.tracks[track.start.id + track.end.id] = track
+        self.add_edge(track)
+    
+    def add_trip(self, trip):
+        self.trips[trip.id] = trip
 
-        for track in self.tracks.values():
-            self.add_edge(track)
-
-    def get_longest_trip_distance(self):
+    def get_longest_possible_trip_length(self):
+        """
+        Determines the longest amount of track from a starting station to an ending station even though no train may take that specific journey. This is helpful to decide the height of the timetable graph showing every stop spaced by relative distance.
+        """
         longest = 0
         for trip in self.trips:
             longest = max(longest, trip.distance)
@@ -42,16 +55,24 @@ class Route(Graph):
         
         return (earliest, latest)
 
-    def get_stations(self):
-        return [x for x in Route.stations.values()]
-
     def find_end_points(self):
-        """Find all the end points for the given route"""
-
+        """Find all the extreme points for the given route (not necessarily trip extremes as some trips may end in the middle of the route???)"""
+        trip_endpoints = {trip.get_origin() for trip in self.trips.values()} | {trip.get_terminus() for trip in self.trips.values()}
         # End points of a line are assumed to only have 1 indegree and 1 outdegree which is one for either direction since this is a directed graph.
-        return [v for v, d in filter(lambda vertex_degree: vertex_degree[1]['indegree'] == 1 or vertex_degree[1]['outdegree'] == 1, self.get_all_degrees())]
+        [
+            print(
+                "%s/%s, S:%s %s | up: %s | down: %s" % (deg[1]['indegree'], deg[1]['outdegree'], deg[0].id, deg[0].name, deg[0].uptown, deg[0].downtown)
+            ) for deg in sorted(self.get_all_degrees(), key=lambda x: x[0].name)
+        ]
+        route_endpoints = {v for v, d in filter(lambda vertex_degree: vertex_degree[1]['indegree'] == 1 and vertex_degree[1]['outdegree'] == 1, self.get_all_degrees())}
+        print(trip_endpoints)
+        [print(station, station.id) for station in trip_endpoints]
+        return route_endpoints & trip_endpoints
 
 class Time:
+    """
+    A time object to help manage the fact that Stop times go higher than 24:00:00 when the same trip passes over midnight.
+    """
     time_parse = re.compile(r"(?P<hr>\d{2}):(?P<min>\d{2}):(?P<sec>\d{2})")
     SECOND = 1
     MINUTE = 60
@@ -78,141 +99,115 @@ class Time:
         return t2.value - t1.value
 
 class Station(DirectedVertex):
+    """
+    A station is a specific place that Routes connect to and Trips have Stops at.
+    """
     def __init__ (self, data):
         id, self.name, self.pickup_type, longitude, latitude = data
         super().__init__(id)
         self.point = (longitude, latitude)
-        self.distance_from_start = None
-        self.downtown = None
-        self.uptown = None
-        Route.stations[id] = self
-        
-    def set_line_order (self, line_order):
-        self.line_order = line_order
+        self.downtown = set()
+        self.uptown = set()
 
     def set_next(self, next, direction):
         if direction == 0:
-            if self.uptown is None:
-                self.uptown = next
-                next.downtown = self
-            elif self.uptown is not next:
-                current = self.uptown
-                found = False
-                while current:
-                    if current.uptown is next:
-                        found = True
-                        self.uptown = current
-                    if found:
-                        break
-                    current = current.uptown
+            self.uptown.add(next)
         elif direction == 1:
-            if self.downtown is None:
-                self.downtown = next
-                next.uptown = self
-            elif self.downtown is not next:
-                current = self.downtown
-                found = False
-                while current:
-                    if current.downtown is next:
-                        found = True
-                        self.downtown = current
-                    if found:
-                        break
-                    current = current.downtown
-    
-    def set_distance_from_start (self, distance):
-        self.distance_from_start = distance
+            self.downtown.add(next)
 
     def __str__(self):
         return 'Station(%s)' % self.name
 
+    __repr__ = __str__
+
+class Path:
+    calculate_distance = utils.calculate_distance
+    
+    @classmethod
+    def get_distance_between_stations(cls, s1, s2):
+        # TODO Currently this is straight line distance. Refactor to follow the path.
+        return cls.calculate_distance(s1.point, s2.point)
+
 class Track(Edge):
+    Path = Path
+    """
+    A physical portion of track, defined as being between two stations. The two stations can be express or location stations.
+    """
     def __init__(self, starting_station, ending_station):
         super().__init__(starting_station, ending_station)
         self.start = starting_station
         self.end = ending_station
-        self.distance = utils.calculate_distance(
-            starting_station.point,
-            ending_station.point
-        )
-        Route.tracks[starting_station.id + ending_station.id] = self
+        self.__length = None
+
+    def get_length(self):
+        if self.__length is None:
+            self.__length = self.Path.get_distance_between_stations(self.start, self.end)
+        return self.__length
     
     def __str__(self):
         return 'Track(%s, %s)' % (self.start.name, self.end.name)
 
+
 class Segment:
-    def __init__(self, starting_stop, ending_stop):
+    """
+    To be a Segment of a Trip is being on a specific Track at a specific time of day.
+    """
+
+    def __init__(self, route, starting_stop, ending_stop):
         self.start = starting_stop
         self.end = ending_stop
-
-        track_id = self.start.station.id + self.end.station.id
-        if track_id not in Route.tracks:
-            Track(starting_stop.station, ending_stop.station)
-        self.track = Route.tracks[track_id]
+        self.track = None
 
         self.duration = Time.compare_times(
             self.start.departure_time,
             self.end.arrival_time
         )
+    
+    def set_track(self, track):
+        self.track = track
 
 class Stop:
+    stations = {}
+    Station = Station
+    """
+    A Stop on a Trip is to be at a specific Station  at a specific time of day.
+    """
     def __init__ (self, data):
-        self.trip_id, self.sequence, parent_station, self.direction, stop_name, \
+        self.sequence, station_id, stop_name, \
         arrival_time, departure_time, pickup_type, lon, lat = data
 
-        self.id = parent_station
+        self.id = self.sequence
         self.arrival_time = Time(arrival_time)
         self.departure_time = Time(departure_time)
 
-        if parent_station not in Route.stations:
-            Station((parent_station, stop_name, pickup_type, lon, lat))
-        self.station = Route.stations[parent_station]
+        if station_id not in self.stations:
+            self.stations[station_id] = self.Station((station_id, stop_name, pickup_type, lon, lat))
+        self.station = self.stations[station_id]
 
 class Trip:
-    def __init__ (self, id, stops):
+    """
+    A Trip is best imagined as the journey one train takes from on it's specific Route from one end to the other. This could include alternate stations, etc.
+    """
+    def __init__ (self, id, headsign, direction, shape_id):
         self.id = id
-        self.stops = [Stop(s) for s in stops]
+        self.headsign = headsign
+        self.shape_id = shape_id
+        self.direction = direction
+
+        self.stops = []
         self.segments = []
 
-        starting_stop = None
-        for ending_stop in self.stops:
-            if starting_stop is not None:
-                segment = Segment(starting_stop, ending_stop)
+    def add_stop(self, stop):
+        self.stops.append(stop)
 
-                if starting_stop.direction == 0:
-                    self.segments.append(segment)
-                else:
-                    # https://stackoverflow.com/questions/8537916/whats-the-idiomatic-syntax-for-prepending-to-a-short-python-list
-                    self.segments.insert(0, segment)
-                
-            starting_stop = ending_stop
+    def add_segment(self, segment):
+        self.segments.append(segment)
 
-        self.direction = self.stops[0].direction
+    def get_origin(self):
+        return self.stops[0].station
 
-        for i, stop in enumerate(self.stops):
-            if i < len(self.stops) - 1:
-                currentStation = Route.stations[stop.id]
-                nextStation = Route.stations[self.stops[i + 1].id]
-                currentStation.set_next(nextStation, self.direction)
-
-        stations_ordered = []
-
-        # Arbitrary element
-        # https://stackoverflow.com/questions/3097866/access-an-arbitrary-element-in-a-dictionary-in-python
-        tmp_station = next(iter(Route.stations.values()))
-
-        # get to the beginning
-        while tmp_station.uptown:
-            tmp_station = tmp_station.uptown
-
-        tmp_station.set_line_order(len(stations_ordered))
-        tmp_station.distance = 0
-        stations_ordered.append(tmp_station)
-
-        while tmp_station.downtown:
-            tmp_station = tmp_station.downtown
-            tmp_station.set_line_order(len(stations_ordered))
-            stations_ordered.append(tmp_station)
+    def get_terminus(self):
+        return self.stops[-1].station
 
 class SVG:
     annotation = {

@@ -58,10 +58,11 @@ def draw(route):
     grid_color = '999999'
     trip_paths = []
 
-    endpoints = route.find_end_points()
     uptown = None
     downtown = None
-    for station in endpoints:
+
+    # expects only results (the furthest extremities) th
+    for station in route.find_end_points():
         if station.downtown:
             uptown = station
         else:
@@ -74,7 +75,7 @@ def draw(route):
     stations = [uptown]
 
     def calculate_distance(track, distance_from_start):
-        distance_from_start += track.distance
+        distance_from_start += track.length
         track.v2.set_distance_from_start(distance_from_start)
         y_points[track.v2.id] = Y(track.v2)
         stations.append(track.v2)

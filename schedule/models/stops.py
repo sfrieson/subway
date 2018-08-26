@@ -1,28 +1,20 @@
-from lib import db
+from lib import db, utils
 
-def get_stops(route_id, day, fields):
-    return db.get_many("""
+def get_by_trip_ids(trip_ids, fields):
+    results = db.get_many("""
         SELECT
-          %s
-        FROM stop_times
-          JOIN trips on stop_times.trip_id = trips.trip_id
-          JOIN stops on stop_times.stop_id = stops.stop_id
+          trip_id, %s
+        FROM stops
+          JOIN stop_times on stop_times.stop_id = stops.stop_id
+          JOIN stations on stations.stop_id = stops.parent_station
         WHERE
+          stop_times.trip_id in (%s) AND
           stop_times.drop_off_type = 0 AND
-          stop_times.pickup_type = 0 AND
-          stop_times.trip_id IN (
-            SELECT stop_times.trip_id
-            FROM trips
-              JOIN stop_times ON trips.trip_id = stop_times.trip_id
-              JOIN stops ON stop_times.stop_id = stops.stop_id
-              JOIN calendar ON trips.service_id = calendar.service_id
-              JOIN routes ON trips.route_id = routes.route_id
-            WHERE
-              trips.route_id = '%s' AND
-              %s IS TRUE
-          )
-        ORDER BY stop_times.trip_id, stop_sequence
-    """ % (', '.join(fields), route_id, day))
+          stop_times.pickup_type = 0
+        ORDER BY stop_sequence
+    """ % (', '.join(fields), ', '.join(["'%s'" % id for id in trip_ids])))
+
+    return utils.collect_on(results, 0, remove_key=True)
 
 def get(station_id, fields):
   return db.get_one("""

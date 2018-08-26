@@ -1,18 +1,28 @@
-from schedule.models import station as model
-from lib import utils
-from lib.classes import Trip
+from schedule.models import stops as model
+from lib.classes import Stop
 
-def get_route_trips(route_id, day_type):
-    # treating the default as weekday, so picking `monday` to represent weekdays
-    day = 'monday'
+def get_by_route(route):
+    
+    stops_by_trip = model.get_by_trip_ids(
+        route.trips.keys(),
+        [
+            'stop_sequence', 'complex_id', 'stops.stop_name', 'arrival_time', 
+            'departure_time', 'pickup_type', 'stop_lon', 'stop_lat'
+        ]
+    )
+    
+    stops_by_trip = {key: [Stop(s) for s in stops] for key, stops in stops_by_trip.items()}
 
-    if day_type is 'saturday':
-        day = 'saturday'
-    elif day_type is 'sunday':
-        day = 'sunday'
+    for trip_id, stops in stops_by_trip.items():
+        trip = route.trips[trip_id]
+        for stop in stops:
+            trip.add_stop(stop)
+            route.add_stop(stop)
 
-    stops = model.get(route_id, day)
-    trips = utils.collect_on(stops, 0) # position 0 is trip_id
-    trips = [Trip(id, stops) for id, stops in trips.items()]
-
-    return trips
+def set_next_stations(route):
+    for trip in route.trips.values():
+        for i, stop in enumerate(trip.stops):
+            if i < len(trip.stops) - 1:
+                currentStation = stop.station
+                nextStation = trip.stops[i + 1].station
+                currentStation.set_next(nextStation, trip.direction)
