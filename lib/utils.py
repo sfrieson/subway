@@ -1,6 +1,6 @@
 from math import radians, cos, sin, asin, sqrt
 
-def collect_on(data, aggregator_key):
+def collect_on(data, aggregator_key, remove_key=False):
     """
     Collects data into lists in a dictionary based off of a key in the input
     """
@@ -9,8 +9,19 @@ def collect_on(data, aggregator_key):
         aggregator_value = item[aggregator_key]
         if aggregator_value not in collected:
             collected[aggregator_value] = []
+        if remove_key:
+            if isinstance(aggregator_key, str):
+                # dict
+                del item[aggregator_key]
+            elif isinstance(aggregator_key, int):
+                # list, tuple
+                item = item[0:aggregator_key] + item[aggregator_key + 1:]
+            else:
+                # throw error of unsure how to delete?
+                pass
 
         collected[aggregator_value].append(item)
+
 
     return collected
 
