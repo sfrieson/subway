@@ -328,43 +328,43 @@ class X(Axis):
     def __init__(self, value):
         super().__init__(value)
 
+
 class Y(Axis):
     def __init__(self, value):
         super().__init__(value)
+
+
+class Geo_Line(Line):
+    def calculate_distance(self, p1, p2):
+        return utils.calculate_distance(p1, p2)
+
 
 class Path:
     def __init__(self, points):
         # points should already be ordered correctly
         self.points = points
-        self.lines = [Line(point, points[i + 1]) for i, point in enumerate(points) if i + 1 in points]
+        self.lines = [Geo_Line(point, points[i + 1]) for i, point in enumerate(points) if i + 1 in points]
 
     def get_distance(self):
-        return self.calculate_distance(self.points[0], self.points[1])
+        return sum([line.calculate_distance() for line in self.lines])
 
-    @classmethod
-    def calculate_distance(cls, p1, p2):
-        return utils.calculate_distance(p1, p2)
+    def segment(self, p1, p2):
+        idx1 = None
+        idx2 = None
+        segment = None
+        for i, point in enumerate(self.points):
+            if not idx1 and (point.lon, point.lat) == (p1.lon, p1.lat):
+                idx1 = i
+            if not idx2 and (point.lon, point.lat) == (p2.lon, p2.lat):
+                idx2 = i
+            if idx1 is not None and idx2 is not None:
+                break
+        
+        if idx1 is not None and idx2 is not None:
+            segment = Path(self.points[idx1:idx2:1 if idx1 > idx2 else -1])
+        
+        return segment
 
-class Path_Line:
-    def __init__(self, p1, p2, path):
-        self.p1 = p1
-        self.p2 = p2
-        self.path = path
-        self.__length = None
-
-    def get_length(self):
-        if self.__length is None:
-            start_found = False
-            for line in self.path.lines:
-                if start_found is False and (line[0].x, line[0].y) == (self.p1.lon, self.p1.lat):
-                    start_found = True
-                    self.__length = 0
-                if start_found:
-                    self.__length += line.get_distance()
-                if  (line[1].x, line[1].y) == (self.p2.lon, self.p2.lat):
-                    break
-
-        return self.__length
 
 class Track:
     """
@@ -373,10 +373,8 @@ class Track:
     def __init__(self, starting_station, ending_station, path):
         self.start = starting_station
         self.end = ending_station
-        self.path = path
-        calculate_distance = utils.calculate_distance
+        self.path = path # The Track can be on other paths too but it should not matter
         self.edge = Edge(self.start, self.end)
-        self.line = Path_Line(self.start, self.end, self.path)
 
         self.__length = None
     
