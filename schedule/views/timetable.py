@@ -1,4 +1,4 @@
-from lib.classes import SVG, Time
+from lib.classes import SVG, Time, Line, Point, X, Y
 
 def change_precision(num, places=0):
     return round(num * 10 ** places)
@@ -10,31 +10,7 @@ def distance_to_int(mi):
     """
     return round(change_precision(mi, 2))
 
-
-class Line:
-    def __init__(self, p1, p2):
-        self.p1 = p1
-        self.p2 = p2
-    
-    def value(self):
-        return (self.p1.value(), self.p2.value())
-
-
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def value(self):
-        return (self.x.value, self.y.value)
-
-
-class Axis:
-    def __init__(self, value):
-        self.value = value
-
-
-class X(Axis):
+class TimeAxis(X):
     def __init__(self, time, time_of_day=False, time_minus_day=False):
         if isinstance(time, int):
             value = time
@@ -48,11 +24,10 @@ class X(Axis):
         
         super().__init__(value)
 
-class Y(Axis):
+class StationAxis(Y):
     def __init__(self, station):
         super().__init__(station.distance_from_start)
         self.data = station
-
 
 def draw(route):
     grid_color = '999999'
@@ -70,14 +45,14 @@ def draw(route):
 
     y_points = {}
 
-    y_points[uptown.id] = Y(uptown)
+    y_points[uptown.id] = StationAxis(uptown)
     y_points[uptown.id].value = 0
     stations = [uptown]
 
     def calculate_distance(track, distance_from_start):
         distance_from_start += track.length
         track.v2.set_distance_from_start(distance_from_start)
-        y_points[track.v2.id] = Y(track.v2)
+        y_points[track.v2.id] = StationAxis(track.v2)
         stations.append(track.v2)
         return distance_from_start
 
@@ -95,11 +70,11 @@ def draw(route):
     horizontals = [s for s in y_points.values()]
     
     grid_lines = [Line(
-        Point(X(x), y_points[uptown.id]),
-        Point(X(x), y_points[downtown.id])
+        Point(TimeAxis(x), y_points[uptown.id]),
+        Point(TimeAxis(x), y_points[downtown.id])
     ) for x in verticals] 
 
-    grid_lines = grid_lines + [Line(Point(X(0), y), Point(X(data_width), y)) for y in horizontals]
+    grid_lines = grid_lines + [Line(Point(TimeAxis(0), y), Point(TimeAxis(data_width), y)) for y in horizontals]
     drawing.add(
         drawing.group(''.join([drawing.normalize_line(line.value(), 'st0') for line in grid_lines]), id='grid-marks')
     )
@@ -114,11 +89,11 @@ def draw(route):
             ends_after_midnight = end.arrival_time.value > Time.DAY
 
             p1 = Point(
-                X(start.departure_time, time_of_day=(not starts_before_midnight)),
+                TimeAxis(start.departure_time, time_of_day=(not starts_before_midnight)),
                 y_points[start.station.id]
             )
             p2 = Point(
-                X(end.arrival_time, time_of_day=(not starts_before_midnight)),
+                TimeAxis(end.arrival_time, time_of_day=(not starts_before_midnight)),
                 y_points[end.station.id]
             )
             
@@ -126,8 +101,8 @@ def draw(route):
 
             # Some lines go off right side of the table, so duplicate them on the left side to come back in
             if ends_after_midnight:
-                duplicate_p1 = Point(X(start.departure_time, time_minus_day=True ), Y(start.station))
-                duplicate_p2 = Point(X(end.arrival_time, time_minus_day=True ), y_points[end.station.id])
+                duplicate_p1 = Point(TimeAxis(start.departure_time, time_minus_day=True ), StationAxis(start.station))
+                duplicate_p2 = Point(TimeAxis(end.arrival_time, time_minus_day=True ), y_points[end.station.id])
 
                 segment_paths.append(Line(duplicate_p1, duplicate_p2))
 

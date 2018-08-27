@@ -1,6 +1,6 @@
 from functools import reduce
 from schedule.models import trips as model
-from lib.classes import Segment, Track, Trip
+from lib.classes import Segment, Track, Trip, Path
 
 def get_valid_trips(route, day_type):
     # all days in the database are lower case (monday, tuesday, wednesday, ...)
@@ -14,7 +14,7 @@ def get_valid_trips(route, day_type):
         day = 'sunday'
 
     trips = [
-        Trip(id, headsign, direction, shape)
+        Trip(id, headsign, direction, shape, Path(model.get_path_by_shape_id(shape)))
         for id, headsign, direction, shape
         in model.get_by_route_id(route.id, ['trip_id', 'trip_headsign', 'direction_id', 'shape_id'], day=day)
     ]
@@ -40,7 +40,7 @@ def create_segments(route):
                 
                 track_id = segment_start.station.id + segment_end.station.id
                 if track_id not in route.tracks:
-                    track = Track(segment.start.station, segment.end.station)
+                    track = Track(segment.start.station, segment.end.station, trip.path)
                     segment.set_track(track)
                     route.add_track(track)
 
