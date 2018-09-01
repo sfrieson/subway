@@ -117,6 +117,9 @@ class Segment:
     def set_track(self, track):
         self.track = track
 
+    def get_length(self):
+        return self.track.get_length() if self.track is not None else 0
+
 class Trip:
     """
     A Trip is best imagined as the journey one train takes from on it's specific Route from one end to the other. This could include alternate stations, etc.
@@ -141,6 +144,9 @@ class Trip:
 
     def get_terminus(self):
         return self.stops[-1].station
+    
+    def get_length(self):
+        return sum([segment.get_length() for segment in self.segments])
 
 class SVG:
     annotation = {
@@ -335,17 +341,23 @@ class Y(Axis):
 
 
 class Geo_Line(Line):
-    def calculate_distance(self, p1, p2):
-        return utils.calculate_distance(p1, p2)
+    def __init__(self, p1, p2):
+        super().__init__(p1, p2)
+
+        self.p1 = p1
+        self.p2 = p2
+
+    def calculate_distance(self):
+        return utils.calculate_distance(self.p1, self.p2)
 
 
 class Path:
     def __init__(self, points):
         # points should already be ordered correctly
         self.points = points
-        self.lines = [Geo_Line(point, points[i + 1]) for i, point in enumerate(points) if i + 1 in points]
+        self.lines = [Geo_Line(point, points[i + 1]) for i, point in enumerate(points) if i + 1 < len(points)]
 
-    def get_distance(self):
+    def get_length(self):
         return sum([line.calculate_distance() for line in self.lines])
 
     def segment(self, p1, p2):
@@ -388,6 +400,12 @@ class Track:
 
     def __str__(self):
         return 'Track(%s, %s)' % (self.start.name, self.end.name)
+
+    def get_length(self):
+        if self.__length is None:
+            self.__length = self.path.get_length()
+        
+        return self.__length
 
 
 class Stop:

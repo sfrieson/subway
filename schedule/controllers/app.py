@@ -14,6 +14,8 @@ def make_route_timetable(route_id, day_type):
     stops_controller.set_next_stations(route)
     print('set stations\' next stations')
 
+    print(list(route.trips.values())[0].get_length())
+
     # print(route.find_end_points())
     # table = timetable.draw(route)
     # print('drew timetable')

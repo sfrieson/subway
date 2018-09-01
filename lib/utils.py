@@ -17,11 +17,10 @@ def collect_on(data, aggregator_key, remove_key=False):
                 # list, tuple
                 item = item[0:aggregator_key] + item[aggregator_key + 1:]
             else:
-                # throw error of unsure how to delete?
+                # throw error if unsure how to delete?
                 pass
 
         collected[aggregator_value].append(item)
-
 
     return collected
 

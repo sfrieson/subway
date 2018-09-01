@@ -40,8 +40,10 @@ def create_segments(route):
                 
                 track_id = segment_start.station.id + segment_end.station.id
                 if track_id not in route.tracks:
-                    track = Track(segment.start.station, segment.end.station, trip.path)
-                    segment.set_track(track)
-                    route.add_track(track)
+                    route.tracks[track_id] = Track(segment.start.station, segment.end.station, trip.path)
+                
+                track = route.tracks[track_id]
+                segment.set_track(track)
+                route.add_track(track)
 
             segment_start = segment_end
