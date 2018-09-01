@@ -18,9 +18,10 @@ def get_by_route_id(route_id, fields, day=None):
 def get_path_by_shape_id(shape_id):
     return db.get_many("""
     SELECT
-        shape_pt_lon, shape_pt_lat
+        point_lon, point_lat
     FROM
         shapes
+        JOIN points on shapes.point_id = points.point_id
     WHERE
         shape_id = '%s'
     ORDER BY

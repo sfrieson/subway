@@ -14,3 +14,20 @@ COPY stop_times FROM '/Users/sfrieson/code/subway/data/GTFS-Schedule-Data_NYCT-S
 -- MTA-specific additional data
 COPY stations FROM '/Users/sfrieson/code/subway/data/mta_stations.csv' DELIMITER ',' CSV HEADER;
 COPY station_entrances FROM '/Users/sfrieson/code/subway/data/StationEntrances.csv' DELIMITER ',' CSV HEADER;
+
+-- Normalize shapes points
+INSERT INTO points(point_lon, point_lat)
+SELECT DISTINCT shape_pt_lon, shape_pt_lat
+FROM shapes;
+
+ALTER TABLE shapes
+ADD COLUMN point_id INT REFERENCES points (point_id);
+
+UPDATE shapes
+SET point_id = points.point_id
+FROM points
+WHERE shape_pt_lat = point_lat AND shape_pt_lon = point_lon;
+
+ALTER TABLE shapes
+DROP COLUMN shape_pt_lon,
+DROP COLUMN shape_pt_lat;

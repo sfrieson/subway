@@ -137,3 +137,9 @@ CREATE TABLE station_entrances (
   lat FLOAT,
   lon FLOAT
 );
+
+CREATE TABLE points(
+  point_id SERIAL PRIMARY KEY,
+  point_lon FLOAT,
+  point_lat FLOAT
+);
