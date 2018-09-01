@@ -42,7 +42,7 @@ CREATE TABLE routes (
 
 -- shape_id + shape_pt_sequence creates unique key
 CREATE TABLE shapes (
-  shape_id CHAR(10),
+  shape_id VARCHAR(10),
   shape_pt_lat FLOAT,
   shape_pt_lon FLOAT,
   shape_pt_sequence SMALLINT,
