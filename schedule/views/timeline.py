@@ -36,7 +36,7 @@ def draw(route):
     uptown = None
     downtown = None
 
-    # expects only results (the furthest extremities) th
+    # expects only results (the furthest extremeties) th
     for station in route.find_end_points():
         if station.downtown:
             uptown = station

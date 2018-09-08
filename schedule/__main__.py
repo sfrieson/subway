@@ -9,7 +9,7 @@ def main(args=None):
     if len(args) == 0:
         print("Please supply a route and day. `python -m schedule W weekday`")
     else:
-        app.make_route_timetable(args[0], args[1])
+        app.make_route_time_views(args[0], args[1])
 
 
 if __name__ == "__main__":
