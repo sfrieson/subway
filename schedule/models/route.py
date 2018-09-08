@@ -5,9 +5,10 @@ def get(route_id):
 def get_paths(route_id):
     return db.get_many("""
         SELECT
-            shape_id, point_id, shape_pt_sequence
+            shape_id, points.point_id, shape_pt_sequence, point_lon, point_lat
         FROM
             shapes
+            JOIN points on shapes.point_id = points.point_id
         WHERE
             shape_id IN (
                 SELECT DISTINCT

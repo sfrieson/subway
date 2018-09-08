@@ -1,5 +1,5 @@
 from schedule.models import route as model
-from lib.classes import Route
+from lib.classes import Geo_Point, Route
 from lib.utils import collect_on
 
 def get(id):
@@ -31,23 +31,29 @@ def get_longest_contiguous_path(path):
     return path[max_start:max_end + 1]
 
 def get_largest_shared_sequence(route):
+    """
+    Looks at all the trips in a path and find the largest portion of the path that all trips have in common.
+    """
+    stations = {str(station.point.lon) + str(station.point.lat): station for station in route.get_stations()}
+    # {<shape_id>: [(<point_id>, <shape_pt_sequence>)]}
     paths = collect_on(model.get_paths(route.id), 0, remove_key=True)
 
-    point_id_sets = [{point[0] for point in points} for points in paths.values()]
+    # [{<point_id>, ...}, {<point_id>, ...}]
+    shape_point_sets = [{(point[2], point[3]) for point in points} for points in paths.values()]
 
-    shared = None
-    for point_set in point_id_sets:
-        if shared is None:
-            shared = point_set
+    shared_set = None
+    for point_set in shape_point_sets:
+        if shared_set is None:
+            shared_set = point_set
         else:
-            shared = shared & point_set
+            shared_set = shared_set & point_set
 
     # get random path
     path = list(paths.values())[0]
 
-    shared = [point for point in path if point[0] in shared]
-    print(len(shared))
+    shared = [point for point in path if (point[2], point[3]) in shared_set]
+    print('# of shared', len(shared))
 
     longest = get_longest_contiguous_path(shared)
 
-    return longest
+    return [stations[str(point[2]) + str(point[3])] if str(point[2]) + str(point[3]) in stations else Geo_Point(point[2], point[3]) for point in longest]
