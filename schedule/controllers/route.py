@@ -57,3 +57,13 @@ def get_largest_shared_sequence(route):
     longest = get_longest_contiguous_path(shared)
 
     return [stations[str(point[2]) + str(point[3])] if str(point[2]) + str(point[3]) in stations else Geo_Point(point[2], point[3]) for point in longest]
+
+def get_station_time_list(route):
+    station_times = {station: {'uptown': set(), 'downtown': set()} for station in route.stations.values()}
+
+    for trip in route.trips.values():
+        direction = 'downtown' if trip.direction is 0 else 'uptown'
+        for stop in trip.stops:
+            station_times[stop.station][direction].add(stop.departure_time)
+    
+    return station_times

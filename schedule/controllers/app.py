@@ -17,12 +17,8 @@ def make_route_time_views(route_id, day_type):
     # sequence = route_controller.get_largest_shared_sequence(route)
     # print(sequence)
     
-    stem_stations = {station: set() for station in route.stations.values()}
-
-    for trip in route.trips.values():
-        for stop in trip.stops:
-            stem_stations[stop.station].add(stop.departure_time)
-    html = timetable.station_time_list(route, stem_stations)
+    
+    html = timetable.station_time_list(route, route_controller.get_station_time_list(route))
 
     html_file = open('./results/station-time-list-%s.html' % route.id, 'w')
     html_file.write(html)

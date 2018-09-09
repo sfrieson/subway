@@ -4,13 +4,23 @@ def station_time_list (route, stations):
         'html': '<h1 class="route">%s</h1><ul class="stations">%s</ul>' % (
             route.letter,
             ''.join(sorted([
-                '<li class="station"><span class="station_name">%s</span><ul class="times">%s</ul></li>' % (
-                    station.name,
-                    "".join([
+                """<li class="station">
+                    <h2 class="station_name">{station.name}</h2>
+                    <h3 id="{station.id}-up" class="direction_label">Uptown</h3>
+                    <ul class="times" aria-labelledby="{station.id}-up">{uptown}</ul>
+                    <h3 id="{station.id}-down" class="direction_label">Downtown</h3>
+                    <ul class="times" aria-labelledby="{station.id}-down">{downtown}</ul>
+                </li>""".format(
+                    station = station,
+                    uptown = "".join([
                         '<li class="time">%s</li>' % time.get_time_of_day()
-                        for time in sorted(times, key=lambda x: x.get_time_of_day_value())
+                        for time in sorted(directions['uptown'], key=lambda x: x.get_time_of_day_value())
+                    ]),
+                    downtown = "".join([
+                        '<li class="time">%s</li>' % time.get_time_of_day()
+                        for time in sorted(directions['downtown'], key=lambda x: x.get_time_of_day_value())
                     ])
-                ) for station, times in stations.items()
+                ) for station, directions in stations.items()
             ]))
         ),
         'css': """
@@ -25,7 +35,6 @@ def station_time_list (route, stations):
 
         .station_name {
             font-family: helvetica;
-            font-size: 1.2em;
             font-weight: bold;
         }
 
@@ -35,6 +44,12 @@ def station_time_list (route, stations):
 
         .station:hover {
             outline: 2px solid lightgray;
+        }
+
+        .direction_label {
+            font-family: arial;
+            margin: 0;
+            font-weight: normal;
         }
 
         .times {
