@@ -17,12 +17,18 @@ def make_route_time_views(route_id, day_type):
     # sequence = route_controller.get_largest_shared_sequence(route)
     # print(sequence)
     
-    stem_stations = {station: {'downtown': set(), 'uptown': set()} for station in route.stations.values()}
+    stem_stations = {station: set() for station in route.stations.values()}
 
     for trip in route.trips.values():
         for stop in trip.stops:
             stem_stations[stop.station].add(stop.departure_time)
-    print(timetable.station_time_list(route, stem_stations))
+    html = timetable.station_time_list(route, stem_stations)
+
+    html_file = open('./results/station-time-list-%s.html' % route.id, 'w')
+    html_file.write(html)
+    print('File written: ./results/station-time-list-%s.html' % route.id)
+
+
     # print(route.find_end_points())
     # table = timeline.draw(route)
     # print('drew timeline')
