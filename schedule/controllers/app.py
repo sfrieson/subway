@@ -1,5 +1,5 @@
 from schedule.controllers import route as route_controller, stops as stops_controller, trips as trip_controller
-from schedule.views import timeline
+from schedule.views import timeline, timetable
 
 def make_route_time_views(route_id, day_type):
     print('start')
@@ -16,7 +16,13 @@ def make_route_time_views(route_id, day_type):
 
     # sequence = route_controller.get_largest_shared_sequence(route)
     # print(sequence)
+    
+    stem_stations = {station: {'downtown': set(), 'uptown': set()} for station in route.stations.values()}
 
+    for trip in route.trips.values():
+        for stop in trip.stops:
+            stem_stations[stop.station].add(stop.departure_time)
+    print(timetable.station_time_list(route, stem_stations))
     # print(route.find_end_points())
     # table = timeline.draw(route)
     # print('drew timeline')
